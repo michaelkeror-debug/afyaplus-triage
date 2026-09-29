@@ -81,8 +81,14 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -r requirements.txt
-      - name: MCP server health (stdio, version, tools, live calls)
-        run: python scripts/mcp_health.py
+      - name: Probe required MCP servers and tools (config/mcp_required.yaml)
+        run: python scripts/mcp_health.py --mode auto --report mcp_health_report.json
+      - name: Upload MCP health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-health-report
+          path: mcp_health_report.json
 
   build-deploy:
     name: 4. Build and deploy
