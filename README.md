@@ -109,6 +109,12 @@ scripts/     check_release.py  check_prompt_pin.py  write_release_manifest.py  r
 
 ---
 
+# Deliverable 3: Eval and regression gate
+
+See [EVAL.md](EVAL.md) for the golden set, metric, thresholds, gate behaviour and the deliberate failing run.
+
+---
+
 # Deliverable 2: CI/CD pipeline
 
 Workflow: `.github/workflows/ci.yml`. Four jobs; each runs only if the previous one passes.
