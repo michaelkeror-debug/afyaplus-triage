@@ -2,7 +2,6 @@ name: release
 on:
   push:
     tags: ['v*.*.*']
-  pull_request:
 jobs:
   aligned-release:
     runs-on: ubuntu-latest
@@ -13,11 +12,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Version alignment gate
         run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            python scripts/check_release.py --tag "$GITHUB_REF_NAME"
-          else
-            python scripts/check_release.py
-          fi
+          python scripts/check_release.py --tag "$GITHUB_REF_NAME"
       - name: Build image with tag == VERSION
         run: |
           V=$(cat VERSION)

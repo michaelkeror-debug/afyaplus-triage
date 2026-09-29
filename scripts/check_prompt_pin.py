@@ -1,5 +1,7 @@
 """CI gate: the running /health must match the committed prompt pin."""
-import argparse, json, sys, urllib.request
+import argparse
+import json
+import urllib.request
 
 
 def load_pin(path: str = 'prompts/pin.json') -> dict:

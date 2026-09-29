@@ -1,0 +1,158 @@
+name: ci
+
+# PRs: lint/test -> eval -> MCP health -> build + container smoke test (deploy stub).
+# main: same, then deploy to Azure Container Apps (stub if Azure secrets are not set).
+# workflow_dispatch: manual run for minute-limited accounts; tick "deploy" to deploy.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to Azure Container Apps after the gates pass"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint-test:
+    name: 1. Lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Version alignment gate
+        run: python scripts/check_release.py
+      - name: Unit tests
+        run: pytest -q
+
+  eval:
+    name: 2. Eval gate
+    needs: lint-test
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run triage eval (live if OPENAI_API_KEY is set, else recorded)
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then MODE=live; else MODE=offline; fi
+          echo "eval mode: $MODE"
+          python scripts/run_eval.py --mode "$MODE" --out eval_report.json
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval_report.json
+
+  mcp-health:
+    name: 3. MCP health
+    needs: eval
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: MCP server health (stdio, version, tools, live calls)
+        run: python scripts/mcp_health.py
+
+  build-deploy:
+    name: 4. Build and deploy
+    needs: mcp-health
+    runs-on: ubuntu-latest
+    env:
+      HAS_AZURE: ${{ secrets.AZURE_CREDENTIALS != '' }}
+      SHOULD_DEPLOY: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.deploy) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Build image (tag == VERSION)
+        run: |
+          V=$(cat VERSION); SHA=${GITHUB_SHA::7}
+          docker build \
+            --build-arg IMAGE_TAG=afyaplus-triage:$V \
+            --build-arg GIT_SHA=$SHA \
+            -t afyaplus-triage:$V .
+          echo "V=$V" >> "$GITHUB_ENV"
+          echo "SHA=$SHA" >> "$GITHUB_ENV"
+
+      - name: Container smoke test (/health must match pin, release, MCP)
+        run: |
+          docker run -d -p 8000:8000 --name triage afyaplus-triage:$V
+          python scripts/smoke_health.py --url http://127.0.0.1:8000/health --wait 60 \
+            || { docker logs triage; exit 1; }
+          python scripts/check_prompt_pin.py --url http://127.0.0.1:8000/health
+
+      - name: Deploy stub (PRs, or no Azure secrets configured)
+        if: env.SHOULD_DEPLOY != 'true' || env.HAS_AZURE != 'true'
+        run: |
+          {
+            echo "### Deploy stub"
+            echo "Would deploy image \`afyaplus-triage:$V\` (commit $SHA)"
+            echo "- event: ${{ github.event_name }}, should_deploy=$SHOULD_DEPLOY, azure_secrets=$HAS_AZURE"
+            echo "- prompt $(python -c "import json;p=json.load(open('prompts/pin.json'));print(p['prompt_version'], p['prompt_sha256'][:12])")"
+            echo "- mcp $(cat mcp_server/VERSION)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Azure login
+        if: env.SHOULD_DEPLOY == 'true' && env.HAS_AZURE == 'true'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Push to ACR and update Container App
+        if: env.SHOULD_DEPLOY == 'true' && env.HAS_AZURE == 'true'
+        env:
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          APP: ${{ vars.CONTAINERAPP_NAME }}
+        run: |
+          IMG=$ACR_NAME.azurecr.io/afyaplus-triage
+          az acr login --name "$ACR_NAME"
+          docker tag afyaplus-triage:$V $IMG:$V
+          docker tag afyaplus-triage:$V $IMG:$V-$SHA
+          docker push $IMG:$V
+          docker push $IMG:$V-$SHA
+          az containerapp update --name "$APP" --resource-group "$RG" \
+            --image $IMG:$V-$SHA
+          FQDN=$(az containerapp show --name "$APP" --resource-group "$RG" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "APP_URL=https://$FQDN" >> "$GITHUB_ENV"
+          echo "Deployed $IMG:$V-$SHA to https://$FQDN" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Post-deploy /health check
+        if: env.SHOULD_DEPLOY == 'true' && env.HAS_AZURE == 'true'
+        run: |
+          python scripts/smoke_health.py --url "$APP_URL/health" --wait 180
+          python scripts/check_prompt_pin.py --url "$APP_URL/health"
