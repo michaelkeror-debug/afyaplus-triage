@@ -36,7 +36,7 @@ The gate passes only if both hold. Otherwise `run_eval.py` exits 1.
 |---|---|---|---|---|---|
 | 1.2.0 | live, local | 0.75 (6/8) | 0 | FAILED | `evals/recorded/triage_v1.2.0.jsonl`: tri_004 no self-care, tri_007 no malaria test |
 | 1.3.0 | live, CI | pass_rate=1.0 (min 0.85) (8/8) | 0 | PASSED | https://github.com/michaelkeror-debug/afyaplus-triage/actions/runs/36599190877 |
-| 1.4.0-rc.1 (deliberate regression) | live, CI | pass_rate=0.0 (min 0.85) (0/8)| 0| FAILED, merge blocked | https://github.com/michaelkeror-debug/afyaplus-triage/pull/2 |
+| 1.4.0-rc.1 (deliberate regression) | live, CI | pass_rate=0.0 (min 0.85) (0/8)| 0| FAILED, merge blocked | https://github.com/michaelkeror-debug/afyaplus-triage/pull/2|
 
 ## Deliberate failing run
 Branch `demo/eval-regression` pins prompt `1.4.0-rc.1`, which drops the disclaimer and the
