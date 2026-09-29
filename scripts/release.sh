@@ -4,12 +4,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION=$(cat VERSION)
 TAG="v${VERSION}"
-python scripts/write_release_manifest.py > /dev/null
-python scripts/check_release.py --tag "$TAG"
+python3 scripts/write_release_manifest.py > /dev/null
+python3 scripts/check_release.py --tag "$TAG"
 git add release.json
 git diff --cached --quiet || git commit -m "release: ${TAG} manifest"
 MCP=$(cat mcp_server/VERSION)
-PROMPT=$(python -c "import json;print(json.load(open('prompts/pin.json'))['prompt_version'])")
+PROMPT=$(python3 -c "import json;print(json.load(open('prompts/pin.json'))['prompt_version'])")
 git tag -a "$TAG" -m "AfyaPlus ${TAG}: image afyaplus-triage:${VERSION}, prompt ${PROMPT}, mcp ${MCP}"
 if [[ "${SKIP_DOCKER:-0}" != "1" ]]; then
   docker build \
