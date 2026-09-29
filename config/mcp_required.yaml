@@ -1,0 +1,22 @@
+# MCP servers and tools the AfyaPlus services depend on.
+# scripts/mcp_health.py probes every entry; any failure exits 1 and blocks deploy.
+servers:
+  - name: afyaplus-logistics
+    module: mcp_server/logistics_mcp.py      # started over stdio (live) or imported (stub)
+    version_resource: version://current
+    expected_version_file: mcp_server/VERSION
+    allow_stub_fallback: true                 # use in-process stub if stdio server is unavailable
+    required_tools: [check_stock, list_low_stock]
+    probes:
+      - tool: check_stock
+        args: {clinic_id: C01, item: amoxicillin}
+        expect: {quantity: 40, reorder_needed: false}
+      - tool: check_stock
+        args: {clinic_id: C04, item: amoxicillin}
+        expect: {quantity: 0, reorder_needed: true}
+      - tool: list_low_stock
+        args: {clinic_id: C04}
+        expect_list_contains: {field: low_stock, key: item, values: [amoxicillin, ors_sachets]}
+      - tool: check_stock
+        args: {clinic_id: C99, item: amoxicillin}
+        expect_error: true                    # unknown clinic must error, never guess

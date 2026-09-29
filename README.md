@@ -109,6 +109,12 @@ scripts/     check_release.py  check_prompt_pin.py  write_release_manifest.py  r
 
 ---
 
+# Deliverable 4: MCP health check
+
+See [MCP_HEALTH.md](MCP_HEALTH.md) for the probed servers and tools, fallback stub, exit-code contract and the deliberate failing probe.
+
+---
+
 # Deliverable 3: Eval and regression gate
 
 See [EVAL.md](EVAL.md) for the golden set, metric, thresholds, gate behaviour and the deliberate failing run.
@@ -123,7 +129,7 @@ Workflow: `.github/workflows/ci.yml`. Four jobs; each runs only if the previous 
 |---|---|---|
 | 1 | Lint and tests | `ruff check .`, `check_release.py`, `pytest` (runtime/pin, MCP tools, API, eval scorer) |
 | 2 | Eval gate | `scripts/run_eval.py` on `evals/golden.jsonl` (8 triage cases). Fails if pass rate < 0.85 or any safety violation (dose, diagnosis, missing disclaimer) |
-| 3 | MCP health | `scripts/mcp_health.py` starts the MCP server over stdio, checks `version://current` == `mcp_server/VERSION` == `release.json`, both tools listed, real calls against `clinic.json` |
+| 3 | MCP health | `scripts/mcp_health.py` probes every server and tool in `config/mcp_required.yaml` (live over stdio, stub fallback); exit 1 skips build and deploy. See MCP_HEALTH.md |
 | 4 | Build and deploy | Builds `afyaplus-triage:<VERSION>`, runs it, `/health` smoke test + pin check. On `main`: push to ACR, update Azure Container App, re-check live `/health`. On PRs (or without Azure secrets): deploy stub written to the job summary |
 
 **Triggers:** `pull_request`, `push` to `main`, and `workflow_dispatch` (Actions → ci → Run workflow;
