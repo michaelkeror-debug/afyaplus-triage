@@ -1,0 +1,32 @@
+name: release
+on:
+  push:
+    tags: ['v*.*.*']
+  pull_request:
+jobs:
+  aligned-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt
+      - name: Version alignment gate
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            python scripts/check_release.py --tag "$GITHUB_REF_NAME"
+          else
+            python scripts/check_release.py
+          fi
+      - name: Build image with tag == VERSION
+        run: |
+          V=$(cat VERSION)
+          docker build --build-arg IMAGE_TAG=afyaplus-triage:$V \
+            --build-arg GIT_SHA=${GITHUB_SHA::7} -t afyaplus-triage:$V .
+          echo "V=$V" >> $GITHUB_ENV
+      - name: Runtime /health must match pin
+        run: |
+          docker run -d -p 8000:8000 --name triage afyaplus-triage:$V
+          for i in $(seq 1 20); do curl -fs localhost:8000/health && break; sleep 1; done
+          python scripts/check_prompt_pin.py --url http://127.0.0.1:8000/health
+          curl -s localhost:8000/health | python -c "import sys,json;h=json.load(sys.stdin);assert h['release']=='$V' and h['mcp_server']['version']==open('mcp_server/VERSION').read().strip(), h"

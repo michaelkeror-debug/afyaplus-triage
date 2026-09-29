@@ -1,0 +1,19 @@
+{
+  "release": "1.2.0",
+  "git_tag": "v1.2.0",
+  "image": "afyaplus-triage:1.2.0",
+  "prompt_bundle": {
+    "version": "1.2.0",
+    "file": "prompts/triage_system_v1.2.0.txt",
+    "sha256": "28b5f129a4bd3650b5765d74681c63df803ea241a0dd749dc7c99d4b0bd4d4ff"
+  },
+  "config": {
+    "version": "1.0.0",
+    "file": "config/triage.yaml",
+    "sha256": "bf6fa48582b8092f7c72ea93b6054fc40187b4a5415a36dc54eff155f934ecaf"
+  },
+  "mcp_server": {
+    "name": "afyaplus-logistics",
+    "version": "1.1.0"
+  }
+}

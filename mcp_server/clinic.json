@@ -1,0 +1,8 @@
+{
+  "clinics": [
+    {"id": "KSM-01", "name": "Kisumu Central Clinic", "reorder_level": 20,
+     "stock": {"paracetamol": 120, "ors": 15, "amoxicillin": 40}},
+    {"id": "NBO-02", "name": "Kibera Health Post", "reorder_level": 25,
+     "stock": {"paracetamol": 18, "ors": 60, "zinc": 10}}
+  ]
+}
