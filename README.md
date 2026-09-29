@@ -63,7 +63,7 @@ $ curl -s localhost:8000/health
   "status": "ok",
   "release": "1.2.0",
   "image_tag": "afyaplus-triage:1.2.0",
-  "git_sha": "2c4f96b",
+  "git_sha": "db5d07b",
   "prompt_version": "1.2.0",
   "prompt_sha256": "28b5f129a4bd3650b5765d74681c63df803ea241a0dd749dc7c99d4b0bd4d4ff",
   "prompt_pinned": true,
