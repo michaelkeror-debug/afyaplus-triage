@@ -6,7 +6,7 @@ servers:
     version_resource: version://current
     expected_version_file: mcp_server/VERSION
     allow_stub_fallback: true                 # use in-process stub if stdio server is unavailable
-    required_tools: [check_stock, list_low_stock]
+    required_tools: [check_stock, list_low_stock, nearest_clinic_with_stock]   # DEMO: tool the server lacks
     probes:
       - tool: check_stock
         args: {clinic_id: C01, item: amoxicillin}
