@@ -45,4 +45,4 @@ result, unavailable without fallback, auto fallback, bad config).
 Branch `demo/mcp-probe-fail` adds `nearest_clinic_with_stock` to `required_tools`, simulating
 the agent needing a tool the server does not provide. Jobs 1 and 2 pass, job 3 fails with
 `required tools exposed: missing ['nearest_clinic_with_stock']`, job 4 is skipped and the merge
-is blocked. PR closed without merging: <link to PR>
+is blocked. PR closed without merging: (https://github.com/michaelkeror-debug/afyaplus-triage/pull/5)
